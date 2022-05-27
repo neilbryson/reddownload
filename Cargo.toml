@@ -13,3 +13,10 @@ reqwest = { version = "0.11.10", features = ["json"] }
 serde = { version = "1.0.137", features = ["derive"] }
 tempfile = "3.3.0"
 tokio = { version = "1.18.2", features = ["full"] }
+
+[profile.release]
+codegen-units = 1
+lto = true
+opt-level = "z"
+panic = "abort"
+strip = true
