@@ -9,7 +9,7 @@ use std::time::Duration;
 
 /// Reddit video downloader
 #[derive(Parser)]
-#[clap(name = "rdl")]
+#[clap(name = "reddownload")]
 #[clap(version, about)]
 struct Cli {
     url: String,
