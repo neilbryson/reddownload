@@ -1,11 +1,9 @@
 # reddownload
 
-Reddit video downloader. 
-
-This is still extremely unstable. Currently, it only works on posts with v.redd.it videos.
+Downloader for Reddit-hosted videos (v.redd.it).
 
 ## Requirements
-* ffmpeg
+* ffmpeg (without this, the video would have no audio)
 
 ## Usage
 ```bash

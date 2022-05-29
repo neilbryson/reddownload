@@ -1,12 +1,13 @@
+mod utils;
+
 use anyhow::{Context, Result};
 use clap::Parser;
-use reqwest::{header, ClientBuilder};
+use reqwest::ClientBuilder;
 use serde::Deserialize;
 use std::collections::HashMap;
-use std::fs::{canonicalize, File};
-use std::io::{copy, Cursor};
-use std::process::Command;
+use std::fs::canonicalize;
 use std::time::Duration;
+use utils::{build_video, download_file};
 
 /// Reddit video downloader
 #[derive(Parser)]
@@ -45,8 +46,7 @@ struct RootResponse {
     data: ListingData,
 }
 
-const USER_AGENT: &str =
-    "Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:100.0) Gecko/20100101 Firefox/100.0";
+const USER_AGENT: &str = "reddownload";
 
 #[tokio::main]
 async fn main() -> Result<()> {
@@ -74,63 +74,39 @@ async fn main() -> Result<()> {
                             reddit_video.height, reddit_video.width, listing_data.data.subreddit
                         );
 
-                        let video_response = client
-                            .get(&reddit_video.fallback_url)
-                            .header(header::USER_AGENT, USER_AGENT)
-                            .header("Content-Type", "video/mp4")
-                            .send()
-                            .await?;
                         println!("Downloading video at {}", reddit_video.fallback_url);
-                        let video_file_path = temp_dir.path().join("tmp.mp4");
-                        let mut video_file =
-                            File::create(&video_file_path).context("Unable to create file")?;
-                        let mut video_content = Cursor::new(video_response.bytes().await?);
-                        copy(&mut video_content, &mut video_file).unwrap();
+                        let video_file_path = download_file(
+                            &client,
+                            &temp_dir,
+                            &reddit_video.fallback_url,
+                            "tmp.mp4",
+                            "video/mp4",
+                        )
+                        .await?;
+
                         println!(
                             "Temporary file saved at {}",
                             video_file_path.to_string_lossy()
                         );
 
-                        let audio_url_build = match &reddit_video.fallback_url.split("DASH").next()
-                        {
-                            Some(url) => Some(format!("{}HLS_AUDIO_160_K.aac", url)),
-                            None => None,
-                        };
+                        let base_url: Vec<&str> = reddit_video.fallback_url.split("DASH").collect();
+                        let audio_url = format!("{}HLS_AUDIO_160_K.aac", base_url.get(0).unwrap());
 
-                        if let Some(audio_url) = audio_url_build {
-                            println!("Downloading audio at {}", &audio_url);
-                            let audio_response = client
-                                .get(&audio_url)
-                                .header(header::USER_AGENT, USER_AGENT)
-                                .header("Content-Type", "audio/aac")
-                                .send()
+                        println!("Downloading audio at {}", &audio_url);
+                        let audio_file_path =
+                            download_file(&client, &temp_dir, &audio_url, "tmp.aac", "audio/aac")
                                 .await?;
-                            let audio_file_path = temp_dir.path().join("tmp.aac");
-                            let mut audio_file =
-                                File::create(&audio_file_path).context("Unable to create file")?;
-                            let mut audio_content = Cursor::new(audio_response.bytes().await?);
-                            copy(&mut audio_content, &mut audio_file).unwrap();
-                            println!(
-                                "Temporary file saved at {}",
-                                audio_file_path.to_string_lossy()
-                            );
+                        println!(
+                            "Temporary file saved at {}",
+                            audio_file_path.to_string_lossy()
+                        );
 
-                            println!("Building video with ffmpeg");
+                        build_video(video_file_path, audio_file_path, &args.save_to_path)?;
 
-                            Command::new("ffmpeg")
-                                .arg("-i")
-                                .arg(video_file_path.into_os_string().into_string().unwrap())
-                                .arg("-i")
-                                .arg(audio_file_path.into_os_string().into_string().unwrap())
-                                .arg(&args.save_to_path)
-                                .output()
-                                .context("Failed to execute process")?;
-
-                            println!(
-                                "Video saved at {}",
-                                canonicalize(args.save_to_path).unwrap().to_string_lossy()
-                            );
-                        }
+                        println!(
+                            "Video saved at {}",
+                            canonicalize(&args.save_to_path).unwrap().to_string_lossy()
+                        );
 
                         return Ok(());
                     }
