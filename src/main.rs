@@ -1,5 +1,6 @@
+use anyhow::{Context, Result};
 use clap::Parser;
-use reqwest::{header, ClientBuilder, Result};
+use reqwest::{header, ClientBuilder};
 use serde::Deserialize;
 use std::collections::HashMap;
 use std::fs::{canonicalize, File};
@@ -53,7 +54,6 @@ async fn main() -> Result<()> {
     let json_url = format!("{}.json", args.url);
     let timeout = Duration::new(20, 0);
     let client = ClientBuilder::new().timeout(timeout).build()?;
-
     let check_url_response = client.head(&json_url).send().await?;
 
     if check_url_response.status().is_success() {
@@ -67,7 +67,7 @@ async fn main() -> Result<()> {
                         let temp_dir = tempfile::Builder::new()
                             .prefix("reddownload-")
                             .tempdir()
-                            .expect("Unable to create temporary directory");
+                            .context("Unable to create temporary directory")?;
 
                         println!(
                             "Found a {}x{} video (/r/{})",
@@ -83,7 +83,7 @@ async fn main() -> Result<()> {
                         println!("Downloading video at {}", reddit_video.fallback_url);
                         let video_file_path = temp_dir.path().join("tmp.mp4");
                         let mut video_file =
-                            File::create(&video_file_path).expect("Unable to create file");
+                            File::create(&video_file_path).context("Unable to create file")?;
                         let mut video_content = Cursor::new(video_response.bytes().await?);
                         copy(&mut video_content, &mut video_file).unwrap();
                         println!(
@@ -107,7 +107,7 @@ async fn main() -> Result<()> {
                                 .await?;
                             let audio_file_path = temp_dir.path().join("tmp.aac");
                             let mut audio_file =
-                                File::create(&audio_file_path).expect("Unable to create file");
+                                File::create(&audio_file_path).context("Unable to create file")?;
                             let mut audio_content = Cursor::new(audio_response.bytes().await?);
                             copy(&mut audio_content, &mut audio_file).unwrap();
                             println!(
@@ -124,7 +124,7 @@ async fn main() -> Result<()> {
                                 .arg(audio_file_path.into_os_string().into_string().unwrap())
                                 .arg(&args.save_to_path)
                                 .output()
-                                .expect("Failed to execute process");
+                                .context("Failed to execute process")?;
 
                             println!(
                                 "Video saved at {}",
@@ -138,9 +138,9 @@ async fn main() -> Result<()> {
             }
         }
 
-        println!("No media to download")
+        eprintln!("No media to download")
     } else {
-        println!("Invalid URL");
+        eprintln!("Invalid URL");
     }
 
     Ok(())
