@@ -1,11 +1,10 @@
+mod reddit;
 mod utils;
 
+use crate::reddit::*;
 use anyhow::{Context, Result};
 use clap::Parser;
 use reqwest::ClientBuilder;
-use serde::Deserialize;
-use std::collections::HashMap;
-use std::fs::canonicalize;
 use std::time::Duration;
 use utils::{build_video, download_file};
 
@@ -13,37 +12,12 @@ use utils::{build_video, download_file};
 #[derive(Parser)]
 #[clap(name = "reddownload")]
 #[clap(version, about)]
+#[clap(arg_required_else_help = true)]
 struct Cli {
+    /// The URL to the Reddit post
     url: String,
+    /// Output file name
     save_to_path: String,
-}
-
-#[derive(Deserialize, Debug)]
-struct SecureMedia {
-    fallback_url: String,
-    height: i16,
-    width: i16,
-}
-
-#[derive(Deserialize, Debug)]
-struct PostData {
-    subreddit: String,
-    secure_media: Option<HashMap<String, SecureMedia>>,
-}
-
-#[derive(Deserialize, Debug)]
-struct ListingDataChild {
-    data: PostData,
-}
-
-#[derive(Deserialize, Debug)]
-struct ListingData {
-    children: Vec<ListingDataChild>,
-}
-
-#[derive(Deserialize, Debug)]
-struct RootResponse {
-    data: ListingData,
 }
 
 const USER_AGENT: &str = "reddownload";
@@ -74,7 +48,7 @@ async fn main() -> Result<()> {
                             reddit_video.height, reddit_video.width, listing_data.data.subreddit
                         );
 
-                        println!("Downloading video at {}", reddit_video.fallback_url);
+                        println!("Downloading video from {}", reddit_video.fallback_url);
                         let video_file_path = download_file(
                             &client,
                             &temp_dir,
@@ -90,23 +64,23 @@ async fn main() -> Result<()> {
                         );
 
                         let base_url: Vec<&str> = reddit_video.fallback_url.split("DASH").collect();
-                        let audio_url = format!("{}HLS_AUDIO_160_K.aac", base_url.get(0).unwrap());
+                        let audio_url = format!("{}DASH_audio.mp4", base_url.get(0).unwrap());
 
-                        println!("Downloading audio at {}", &audio_url);
-                        let audio_file_path =
-                            download_file(&client, &temp_dir, &audio_url, "tmp.aac", "audio/aac")
-                                .await?;
+                        println!("Downloading audio from {}", &audio_url);
+                        let audio_file_path = download_file(
+                            &client,
+                            &temp_dir,
+                            &audio_url,
+                            "tmp_audio.mp4",
+                            "video/mp4",
+                        )
+                        .await?;
                         println!(
                             "Temporary file saved at {}",
                             audio_file_path.to_string_lossy()
                         );
 
                         build_video(video_file_path, audio_file_path, &args.save_to_path)?;
-
-                        println!(
-                            "Video saved at {}",
-                            canonicalize(&args.save_to_path).unwrap().to_string_lossy()
-                        );
 
                         return Ok(());
                     }
