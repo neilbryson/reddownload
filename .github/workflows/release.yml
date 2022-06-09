@@ -54,15 +54,19 @@ jobs:
         with:
           name: release-binary-Windows
           path: windows
-      - name: Compress files
-        run: |
-          tar -czf reddownload-linux.tar.gz linux/reddownload
-          tar -czf reddownload-macos.tar.gz macos/reddownload
-          zip -9 reddownload-windows.zip windows/reddownload.exe
+      - name: Compress Linux binary
+        working-directory: linux
+        run: tar -czf reddownload-linux.tar.gz reddownload
+      - name: Compress macOS binary
+        working-directory: macos
+        run: tar -czf reddownload-macos.tar.gz reddownload
+      - name: Compress Windows binary
+        working-directory: windows
+        run: zip -9 reddownload-windows.zip reddownload.exe
       - uses: softprops/action-gh-release@v1
         with:
           files: |
-            reddownload-linux.tar.gz
-            reddownload-macos.tar.gz
-            reddownload-windows.zip
+            linux/reddownload-linux.tar.gz
+            macos/reddownload-macos.tar.gz
+            windows/reddownload-windows.zip
         

@@ -5,6 +5,9 @@ Downloader for Reddit-hosted videos (v.redd.it).
 ## Requirements
 * ffmpeg (without this, the video would have no audio)
 
+## Installation
+1. Download the release
+
 ## Usage
 ```bash
 reddownload <URL> <SAVE_TO_PATH>
