@@ -6,8 +6,11 @@ on:
       - "v*.*.*"
 
 jobs:
-  build:
-    runs-on: ubuntu-latest
+  prepare:
+    strategy:
+      matrix:
+        os: [ubuntu-latest, macos-11, windows-2022]
+    runs-on: ${{ matrix.os }}
     steps:
       - uses: actions/checkout@v2
       - uses: actions-rs/toolchain@v1
@@ -28,6 +31,38 @@ jobs:
         with:
           command: build
           args: --release
+      - uses: actions/upload-artifact@v3
+        with:
+          name: release-binary-${{ runner.os }}
+          path: target/release/reddownload*
+  release:
+    needs: [prepare]
+    runs-on: ubuntu-latest
+    steps:
+      - name: Download Linux artifact
+        uses: actions/download-artifact@v3
+        with:
+          name: release-binary-Linux
+          path: linux
+      - name: Download macOS artifact
+        uses: actions/download-artifact@v3
+        with:
+          name: release-binary-macOS
+          path: macos
+      - name: Download Windows artifact
+        uses: actions/download-artifact@v3
+        with:
+          name: release-binary-Windows
+          path: windows
+      - name: Compress files
+        run: |
+          tar -czf reddownload-linux.tar.gz linux/reddownload
+          tar -czf reddownload-macos.tar.gz macos/reddownload
+          zip -9 reddownload-windows.zip windows/reddownload.exe
       - uses: softprops/action-gh-release@v1
         with:
-          files: target/release/reddownload
+          files: |
+            reddownload-linux.tar.gz
+            reddownload-macos.tar.gz
+            reddownload-windows.zip
+        
