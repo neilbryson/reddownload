@@ -10,7 +10,6 @@ pub struct SecureMedia {
 
 #[derive(Deserialize, Debug)]
 pub struct PostData {
-    pub(crate) subreddit: String,
     pub(crate) secure_media: Option<HashMap<String, SecureMedia>>,
 }
 

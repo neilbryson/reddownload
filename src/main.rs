@@ -2,7 +2,7 @@ mod reddit;
 mod utils;
 
 use crate::reddit::*;
-use anyhow::{Context, Result};
+use anyhow::{anyhow, Context, Result};
 use clap::Parser;
 use reqwest::ClientBuilder;
 use std::time::Duration;
@@ -17,7 +17,7 @@ struct Cli {
     /// The URL to the Reddit post
     url: String,
     /// Output file name
-    save_to_path: String,
+    file_name: Option<String>,
 }
 
 const USER_AGENT: &str = "reddownload";
@@ -30,7 +30,7 @@ async fn main() -> Result<()> {
     let client = ClientBuilder::new().timeout(timeout).build()?;
     let check_url_response = client.head(&json_url).send().await?;
 
-    if check_url_response.status().is_success() {
+    return if check_url_response.status().is_success() {
         let api_response = client.get(&json_url).send().await?;
         let json: Vec<RootResponse> = api_response.json().await?;
 
@@ -44,8 +44,8 @@ async fn main() -> Result<()> {
                             .context("Unable to create temporary directory")?;
 
                         println!(
-                            "Found a {}x{} video (/r/{})",
-                            reddit_video.height, reddit_video.width, listing_data.data.subreddit
+                            "Found a {}x{} video",
+                            reddit_video.height, reddit_video.width
                         );
 
                         println!("Downloading video from {}", reddit_video.fallback_url);
@@ -80,7 +80,20 @@ async fn main() -> Result<()> {
                             audio_file_path.to_string_lossy()
                         );
 
-                        build_video(video_file_path, audio_file_path, &args.save_to_path)?;
+                        let file_name = match args.file_name {
+                            Some(path) => path,
+                            None => {
+                                let segments: Vec<&str> =
+                                    reddit_video.fallback_url.split("/").collect();
+                                let final_name = format!(
+                                    "{}.mp4",
+                                    segments.get(3).unwrap_or(&"reddownload-video.mp4")
+                                );
+                                final_name.to_string()
+                            }
+                        };
+
+                        build_video(video_file_path, audio_file_path, &file_name)?;
 
                         return Ok(());
                     }
@@ -88,10 +101,8 @@ async fn main() -> Result<()> {
             }
         }
 
-        eprintln!("No media to download")
+        Err(anyhow!("No Reddit video to download"))
     } else {
-        eprintln!("Invalid URL");
-    }
-
-    Ok(())
+        Err(anyhow!("Invalid URL"))
+    };
 }

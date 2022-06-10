@@ -1,5 +1,5 @@
 use crate::USER_AGENT;
-use anyhow::{Context, Result};
+use anyhow::{anyhow, Context, Result};
 use reqwest::{header, Client};
 use std::fs;
 use std::io::{copy, Cursor};
@@ -53,11 +53,11 @@ pub fn build_video(
                 fs::metadata(&output_path).unwrap().len()
             );
         } else {
-            eprintln!("Video generation failed");
+            return Err(anyhow!("Video generation failed"));
         }
     } else {
         println!("ffmpeg is not installed. Copying the mp4 file without audio.");
-        std::fs::copy(
+        fs::copy(
             Path::new(&video_file_path.into_os_string()),
             Path::new(&output_path),
         )?;
