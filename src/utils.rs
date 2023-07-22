@@ -1,6 +1,5 @@
-use crate::USER_AGENT;
 use anyhow::{anyhow, Context, Result};
-use reqwest::{header, Client};
+use reqwest::Client;
 use std::fs;
 use std::io::{copy, Cursor};
 use std::path::{Path, PathBuf};
@@ -16,7 +15,6 @@ pub async fn download_file(
 ) -> Result<PathBuf> {
     let response = client
         .get(url)
-        .header(header::USER_AGENT, USER_AGENT)
         .header("Content-Type", content_type)
         .send()
         .await?;

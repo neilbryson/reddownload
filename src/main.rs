@@ -27,7 +27,10 @@ async fn main() -> Result<()> {
     let args: Cli = Cli::parse();
     let json_url = format!("{}.json", args.url);
     let timeout = Duration::new(20, 0);
-    let client = ClientBuilder::new().timeout(timeout).build()?;
+    let client = ClientBuilder::new()
+        .timeout(timeout)
+        .user_agent(USER_AGENT)
+        .build()?;
     let check_url_response = client.head(&json_url).send().await?;
 
     return if check_url_response.status().is_success() {
