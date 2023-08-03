@@ -67,7 +67,7 @@ async fn main() -> Result<()> {
                         );
 
                         let base_url: Vec<&str> = reddit_video.fallback_url.split("DASH").collect();
-                        let audio_url = format!("{}DASH_audio.mp4", base_url.get(0).unwrap());
+                        let audio_url = format!("{}HLS_AUDIO_128.aac", base_url.get(0).unwrap());
 
                         println!("Downloading audio from {}", &audio_url);
                         let audio_file_path = download_file(
